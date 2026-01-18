@@ -1,15 +1,19 @@
 steps:
 # Step 1: Restore NuGet packages
-- name: 'mcr.microsoft.com/dotnet/framework/sdk:4.8'
+- name: 'mcr.microsoft.com/dotnet/sdk:7.0'
   args: ['nuget', 'restore', 'PromptOptimizer.sln']
+  env:
+    - 'DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false'
   
 # Step 2: Build solution in Release mode
-- name: 'mcr.microsoft.com/dotnet/framework/sdk:4.8'
+- name: 'mcr.microsoft.com/dotnet/sdk:7.0'
   args: ['msbuild', 'PromptOptimizer.sln', '/p:Configuration=Release', '/p:Platform=x64']
+  env:
+    - 'DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false'
 
-# Step 3: Copy artifacts to build output
+# Step 3: Copy EXE to artifacts location
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['cp', '-r', 'bin/Release', '/workspace/output']
+  args: ['cp', 'bin/Release/PromptOptimizer.exe', 'gs://${PROJECT_ID}-builds/PromptOptimizer.exe']
 
 # Artifacts section - defines what to upload
 artifacts:
