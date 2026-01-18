@@ -1,30 +1,48 @@
 steps:
-# Step 1: Restore NuGet packages using dotnet CLI
-- name: 'mcr.microsoft.com/dotnet/sdk:7.0'
-  args: ['dotnet', 'restore', 'PromptOptimizer.sln']
-  env:
-    - 'DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false'
+  # Step 1: Restore NuGet packages
+  - name: 'mcr.microsoft.com/windows/servercore:ltsc2019'
+    entrypoint: powershell
+    args:
+      - '-Command'
+      - |
+        cd PromptOptimizer
+        nuget restore
   
-# Step 2: Build solution in Release mode using dotnet msbuild
-- name: 'mcr.microsoft.com/dotnet/sdk:7.0'
-  args: ['dotnet', 'msbuild', 'PromptOptimizer.sln', '/p:Configuration=Release', '/p:Platform=x64']
-  env:
-    - 'DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false'
+  # Step 2: Build the project (Release)
+  - name: 'mcr.microsoft.com/dotnet/framework/sdk:4.8-windowsservercore-ltsc2019'
+    entrypoint: powershell
+    args:
+      - '-Command'
+      - |
+        cd PromptOptimizer
+        msbuild PromptOptimizer.csproj /p:Configuration=Release /p:Platform=x64
+  
+  # Step 3: Run ILMerge to create portable .exe
+  - name: 'mcr.microsoft.com/windows/servercore:ltsc2019'
+    entrypoint: powershell
+    args:
+      - '-Command'
+      - |
+        cd PromptOptimizer
+        ilmerge /out:PromptOptimizer.exe `
+          bin/Release/PromptOptimizer.exe `
+          bin/Release/Newtonsoft.Json.dll `
+          bin/Release/EntityFramework.dll `
+          bin/Release/System.Data.SQLite.dll `
+          bin/Release/log4net.dll `/t:winexe
+  
+  # Step 4: Upload to Cloud Storage
+  - name: 'gcr.io/cloud-builders/gsutil'
+    args:
+      - 'cp'
+      - 'PromptOptimizer/bin/Release/PromptOptimizer.exe'
+      - 'gs://${PROJECT_ID}-builds/PromptOptimizer.exe'
 
-# Artifacts section - defines what to upload
 artifacts:
   objects:
     location: 'gs://${PROJECT_ID}-builds'
-    paths: 
-      - 'bin/Release/PromptOptimizer.exe'
+    paths:
+      - 'PromptOptimizer.exe'
 
-# Images section (optional)
-images: []
-
-# Options
-options:
-  machineType: 'N1_HIGHCPU_8'
-  logging: CLOUD_LOGGING_ONLY
-  
-# Timeout - 30 minutes
-timeout: 1800s
+images:
+  - 'gcr.io/$PROJECT_ID/prompt-optimizer:latest'
