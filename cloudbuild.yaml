@@ -1,22 +1,17 @@
 steps:
-  # Step 1: Restore NuGet packages
   - name: 'mcr.microsoft.com/dotnet/sdk:7.0'
     args: ['dotnet', 'restore', 'PromptOptimizer.sln']
 
-  # Step 2: Build solution in Release mode
   - name: 'mcr.microsoft.com/dotnet/sdk:7.0'
-    args: ['dotnet', 'msbuild', 'PromptOptimizer.sln', '/p:Configuration=Release', '/p:Platform=x64']
+    args: ['dotnet', 'build', 'PromptOptimizer.sln', '-c', 'Release']
 
-# Artifacts
 artifacts:
   objects:
     location: 'gs://${PROJECT_ID}-builds'
     paths:
       - 'bin/Release/PromptOptimizer.exe'
 
-# Options - VEREINFACHT!
 options:
   logging: CLOUD_LOGGING_ONLY
-  machineType: 'N1_HIGHCPU_8'
 
-timeout: '1800s'
+timeout: 1800s
